@@ -1,0 +1,481 @@
+JWasm v2.11, Oct 20 2013
+.\p6.asm
+                                ;       Program: Print Hex, Decimal, and Binary
+                                ;   Description: This program takes a key press from the user and displays info
+                                ;					about it. The info includes the character, ASCII value, hex
+                                ;					value, and binary value
+                                ;        Author: Sam Henry
+                                ;          Date: 10/28/15
+                                ; Help Received: None
+
+                                include irvine16.inc    ; Include Irvine's code definitions.
+                              C ; Irvine16.inc - Include file for programs using
+                              C ; the Irvine16.lib (Real-address mode library).
+                              C 
+                              C ; Last update: 7/29/05
+                              C 
+                              C .LIST
+
+                                .data
+00000000  1B                    	esc_key byte 01bh			; ASCII code for the escape key, for readability
+00000001  0D0A                  	newline_char byte 0dh, 0ah  ; ASCII values for carriage return and newline
+
+00000000                        .code
+00000000                        main proc
+00000000  B80000                        mov  ax, DGROUP          ; @data is the data segment that DOS sets up.
+00000003  8ED8                          mov  ds, ax
+
+00000005                        	read:
+00000005  E82900                		call read_char			
+00000008  3A060000              		cmp al, [esc_key]		; Makes sure the user did not press the escape key
+0000000C  741F                  		jz terminate			; Exit the program if the user pressed escape
+                                		
+0000000E  B40E                  		mov ah, 0eh				; Print the character to the screen
+00000010  CD10                  		int 10h					
+00000012  E8DA00                		call print_space
+                                		
+00000015  660FB6C0              		movzx eax, al			; Put the character in eax, since eax is used in the procedures
+                                		
+00000019  E81A00                		call print_hex			; Print hexadecimal version of the ASCII value
+0000001C  E8D000                		call print_space
+                                		
+0000001F  E84D00                		call print_udec			; Print decimal version of the ASCII value
+00000022  E8CA00                		call print_space
+                                		
+00000025  E87B00                		call print_bin			; Print binary version of the ASCII value
+00000028  E8CD00                		call print_newline
+0000002B  EBD8                  		jmp read
+                                		
+0000002D                        	terminate:
+                                		.EXIT
+00000031                        main endp
+
+                                ;************************************************************************
+                                ; Function: Reads a character from the user and stores it in al
+                                ; Receives: Nothing
+                                ;  Returns: The ASCII value of the character in al
+                                ; Requires: Nothing at all
+                                ; Clobbers: Only ax for reading the character
+00000031                        read_char proc
+00000031  B410                  		mov ah, 10h
+00000033  CD16                  		int 16h
+00000035                        		ret
+00000036                        read_char endp
+
+                                ;************************************************************************
+                                ; Function: Prints a hexadecimal number, one nibble at a time.
+                                ; Receives: The 32-bit number in eax to print out
+                                ;  Returns: Nothing
+                                ; Requires: Just a number inside of eax
+                                ; Clobbers: Nothing
+00000036                        print_hex proc
+00000036  6660                  		pushad					; Store the values of the registers
+                                		
+00000038  B90800                		mov cx, 8				; The loop counter for each nibble in eax
+                                	
+0000003B                        	rotate_hex:					; Loops through each nibble and prints out
+                                								;     the corresponding hex value
+0000003B  66C1C004              		rol eax, 4				; Puts the next nibble in the lower half of al
+0000003F  E80500                		call print_nibble_hex	; Prints that nibble
+00000042  E2F7                  		loopw rotate_hex
+                                		
+00000044  6661                  		popad
+00000046                        		ret
+00000047                        print_hex endp
+
+                                ;************************************************************************
+                                ; Function: Prints the hexadecimal number corresponding with
+                                ; 			the nibble in the lower half of al
+                                ; Receives: eax for the number in al
+                                ;  Returns: Nothing
+                                ; Requires: A number to print out in al
+                                ; Clobbers: Nothing
+00000047                        print_nibble_hex proc
+00000047  6650                  		pushd eax
+00000049  51                    		push cx
+                                		
+0000004A  B90400                		mov cx, 4				; The loop counter
+0000004D                        	make_al_nibble:				; Loop through al and make it look like [0000xxxx]
+0000004D  F8                    		clc
+0000004E  D0D0                  		rcl al, 1
+00000050  E2FB                  		loopw make_al_nibble
+                                		
+00000052  C0C004                		rol al, 4				; Returns al back to where it was
+                                		
+00000055  3C0A                  		cmp al, 10
+00000057  7C02                  		jl print_num			; If the number is between 0-9, print the ASCII value
+00000059  7D08                  		jge print_letter		; If it is between 10-15, print the ASCII value A-F
+                                		
+0000005B                        	print_num:					; Prints the number corresponding with the lower half of al
+0000005B  0430                  		add al, 30h				; Convert to ASCII number
+0000005D  B40E                  		mov ah, 0eh
+0000005F  CD10                  		int 10h
+00000061  EB08                  		jmp print_nibble_hex_exit
+                                		
+00000063                        	print_letter:				; Prints the hex letter corresponding with the lower half of al
+00000063  0437                  		add al, 37h				; Convert the number to the correct letter
+00000065  B40E                  		mov ah, 0eh
+00000067  CD10                  		int 10h
+00000069  EB00                  		jmp print_nibble_hex_exit
+                                		
+0000006B                        	print_nibble_hex_exit:
+0000006B  59                    		pop cx
+0000006C  6658                  		pop eax
+0000006E                        		ret
+0000006F                        print_nibble_hex endp
+
+                                ;************************************************************************
+                                ; Function: Prints a decimal number to the screen in eax
+                                ; Receives: The number to print in eax
+                                ;  Returns: Nothing
+                                ; Requires: An unsigned number in eax
+                                ; Clobbers: Nothing
+0000006F                        print_udec proc
+0000006F  6660                  		pushad
+00000071  B90000                		mov cx, 0		; Set the loop counter to 0
+00000074  66BB0A000000          		mov ebx, 10		; This is the divisor
+0000007A  66BA00000000          		mov edx, 0		; Set the top half of the divident to 0 (only eax needed)
+                                		
+00000080                        	divide:
+00000080  41                    		inc cx			; Increment the loop counter
+00000081  66F7F3                		div ebx
+00000084  6683C230              		add edx, 30h	; Put the ASCII value of the number in dx
+00000088  6652                  		pushd edx		; Push the number onto the stack
+0000008A  66BA00000000          		mov edx, 0		; The top half of the dividend will always be 0 now that the first divide is done
+00000090  6683F800              		cmp eax, 0		; If the quotient is 0, then we're done
+00000094  75EA                  		jnz divide
+                                		
+00000096                        	print:
+00000096  665A                  		pop edx			; Take the number off the stack
+00000098  8AC2                  		mov al, dl		; Print it to the screen
+0000009A  B40E                  		mov ah, 0eh
+0000009C  CD10                  		int 10h
+0000009E  E2F6                  		loopw print
+                                		
+000000A0  6661                  		popad			; Reload the registers so you don't clobber them
+000000A2                        		ret
+000000A3                        print_udec endp
+
+                                ;************************************************************************
+                                ; Function: Prints the binary version of what is inside of eax
+                                ; Receives: The number to print in eax
+                                ;  Returns: Nothing
+                                ; Requires: A valid number in eax
+                                ; Clobbers: Nothing
+000000A3                        print_bin proc
+000000A3  6660                  		pushad
+                                		
+000000A5  B90400                		mov cx, 4					; Set the loop counter
+                                	
+000000A8                        	rotate_bin:						; Prints the binary number by each byte
+000000A8  66C1C008              		rol eax, 8					; Each byte is rolled into al
+000000AC  E81800                		call print_byte_bin			; Prints al
+000000AF  83F901                		cmp cx, 1					; If you're not on the last loop, print an underscore
+000000B2  7504                  		jnz print_ 
+000000B4  E2F2                  		loopw rotate_bin
+000000B6  EB0C                  		jmp exit_print_bin
+                                		
+000000B8                        	print_:							; Prints the underscore
+000000B8  6650                  		pushd eax
+000000BA  B05F                  		mov al, '_'
+000000BC  B40E                  		mov ah, 0eh
+000000BE  CD10                  		int 10h
+000000C0  6658                  		pop eax
+000000C2  E2E4                  		loopw rotate_bin
+                                		
+000000C4                        	exit_print_bin:
+000000C4  6661                  		popad
+000000C6                        		ret
+000000C7                        print_bin endp
+
+                                ;************************************************************************
+                                ; Function: Prints the 1's and 0's of a byte
+                                ; Receives: A byte in al
+                                ;  Returns: Nothing
+                                ; Requires: A valid number in al
+                                ; Clobbers: Nothing
+000000C7                        print_byte_bin proc
+000000C7  51                    		push cx
+000000C8  50                    		push ax
+000000C9  B90800                		mov cx, 8
+                                		
+000000CC                        	testbit:			; Tests whether the bit is 1 or 0
+000000CC  D0C0                  		rol al, 1		; Put the next bit in the carry flag
+000000CE  7204                  		jc print1
+000000D0  730E                  		jnc print0
+000000D2  EB18                  		jmp exittest
+                                		
+000000D4                        	print1:				; Prints a 1
+000000D4  50                    		push ax
+000000D5  B031                  		mov al, '1'
+000000D7  B40E                  		mov ah, 0eh
+000000D9  CD10                  		int 10h
+000000DB  58                    		pop ax
+000000DC  E2EE                  		loopw testbit	; Goes to the next bit
+000000DE  EB0C                  		jmp exittest
+                                		
+000000E0                        	print0:				; Prints a 0
+000000E0  50                    		push ax
+000000E1  B030                  		mov al, '0'
+000000E3  B40E                  		mov ah, 0eh
+000000E5  CD10                  		int 10h
+000000E7  58                    		pop ax
+000000E8  E2E2                  		loopw testbit	; Goes to the next bit
+000000EA  EB00                  		jmp exittest
+                                		
+000000EC                        	exittest:
+000000EC  58                    		pop ax
+000000ED  59                    		pop cx
+000000EE                        		ret
+000000EF                        print_byte_bin endp
+
+                                ;************************************************************************
+                                ; Function: Prints a space to the screen
+                                ; Receives: Nothing
+                                ;  Returns: Nothing
+                                ; Requires: Nothing
+                                ; Clobbers: Nothing
+000000EF                        print_space proc
+000000EF  50                    		push ax
+000000F0  B020                  		mov al, ' '
+000000F2  B40E                  		mov ah, 0eh
+000000F4  CD10                  		int 10h
+000000F6  58                    		pop ax
+000000F7                        		ret
+000000F8                        print_space endp
+
+                                ;************************************************************************
+                                ; Function: Prints a newline to the screen
+                                ; Receives: Nothing
+                                ;  Returns: Nothing
+                                ; Requires: Nothing
+                                ; Clobbers: Nothing
+000000F8                        print_newline proc
+000000F8  50                    		push ax
+000000F9  A00100                		mov al, [newline_char]
+000000FC  B40E                  		mov ah, 0eh
+000000FE  CD10                  		int 10h
+00000100  A00200                		mov al, [newline_char + 1]
+00000103  B40E                  		mov ah, 0eh
+00000105  CD10                  		int 10h
+00000107  58                    		pop ax
+00000108                        		ret
+00000109                        print_newline endp
+
+                                end main
+
+
+Macros:
+
+                N a m e                 Type
+
+@CatStr  . . . . . . . . . . . .        Func
+@Environ . . . . . . . . . . . .        Func
+@InStr . . . . . . . . . . . . .        Func
+@SizeStr . . . . . . . . . . . .        Func
+@SubStr  . . . . . . . . . . . .        Func
+
+
+Structures and Unions:
+
+                N a m e                 Size/Ofs   Type
+
+CursorPosStruc . . . . . . . . .               2
+  Ycoord . . . . . . . . . . . .               0   Byte
+  Xcoord . . . . . . . . . . . .               1   Byte
+ExtGetDskFreSpcStruc . . . . . .              2C
+  StructSize . . . . . . . . . .               0   Word
+  Level  . . . . . . . . . . . .               2   Word
+  SectorsPerCluster  . . . . . .               4   DWord
+  BytesPerSector . . . . . . . .               8   DWord
+  AvailableClusters  . . . . . .               C   DWord
+  TotalClusters  . . . . . . . .              10   DWord
+  AvailablePhysSectors . . . . .              14   DWord
+  TotalPhysSectors . . . . . . .              18   DWord
+  AvailableAllocationUnits . . .              1C   DWord
+  TotalAllocationUnits . . . . .              20   DWord
+  Rsvd . . . . . . . . . . . . .              24   DWord[2]
+FPU_ENVIRON  . . . . . . . . . .              1C
+  controlWord  . . . . . . . . .               0   Word
+  statusWord . . . . . . . . . .               4   Word
+  tagWord  . . . . . . . . . . .               8   Word
+  instrPtrLow  . . . . . . . . .               C   Word
+  opcodeAndInstrPtrHi  . . . . .              10   DWord
+  operandPtrLow  . . . . . . . .              14   Word
+  operandPtrHi . . . . . . . . .              18   DWord
+TimeRecord . . . . . . . . . . .               4
+  hours  . . . . . . . . . . . .               0   Byte
+  minutes  . . . . . . . . . . .               1   Byte
+  seconds  . . . . . . . . . . .               2   Byte
+  hhss . . . . . . . . . . . . .               3   Byte
+VideoInfoStruc . . . . . . . . .              41
+  supportedInfoPtr . . . . . . .               0   DWord
+  videoMode  . . . . . . . . . .               4   Byte
+  numCharColumns . . . . . . . .               5   Word
+  videoBufferLen . . . . . . . .               7   Word
+  videoBufferStartPtr  . . . . .               9   Word
+  cursors  . . . . . . . . . . .               B   CursorPosStruc[8]
+  cursorStartLine  . . . . . . .              1B   Byte
+  cursorEndLine  . . . . . . . .              1C   Byte
+  activeDisplayPage  . . . . . .              1D   Byte
+  adapterBasePortAddr  . . . . .              1E   Word
+  currentRegister3B8or3D8  . . .              20   Byte
+  currentRegister3B9or3D9  . . .              21   Byte
+  numCharRows  . . . . . . . . .              22   Byte
+  characterScanHeight  . . . . .              23   Word
+  activeDisplayCode  . . . . . .              25   Byte
+  inactiveDisplayCode  . . . . .              26   Byte
+  numberOfColors . . . . . . . .              27   Word
+  numberOfVideoPages . . . . . .              29   Byte
+  numberOfScanLines  . . . . . .              2A   Word
+  primaryCharBlock . . . . . . .              2C   Byte
+  secondaryCharBlock . . . . . .              2D   Byte
+  miscStateInfo  . . . . . . . .              2E   Byte
+  videoMemAvail  . . . . . . . .              32   Byte
+  savePointerStateInfo . . . . .              33   Byte
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+$$SYMBOLS  . . . . . . . . . . .        32 Bit   0000037C Byte    Private 'DEBSYM'
+$$TYPES  . . . . . . . . . . . .        32 Bit   00000612 Byte    Private 'DEBTYP'
+_TEXT  . . . . . . . . . . . . .        16 Bit   0109     Word    Public  'CODE'
+DGROUP . . . . . . . . . . . . .        GROUP
+_DATA  . . . . . . . . . . . . .        16 Bit   0003     Word    Public  'DATA'
+STACK  . . . . . . . . . . . . .        16 Bit   0200     Para    Stack   'STACK'
+
+
+Procedures, parameters and locals:
+
+                N a m e                 Type     Value    Segment  Length
+
+Clrscr . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Crlf . . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Delay  . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+DumpMem  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+DumpRegs . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetCommandtail . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetMaxXY . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetMseconds  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Gotoxy . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+IsDigit  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Random32 . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+RandomRange  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Randomize  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadChar . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadFloat  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadHex  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadInt  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadString . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+SetTextColor . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ShowFPUStack . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_compare  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_copy . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_length . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_trim . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_ucase  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WaitMsg  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteBin . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteBinB  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteChar  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteDec . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteFloat . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteHex . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteHexB  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteInt . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteString  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+main . . . . . . . . . . . . . .        P Near   0000     _TEXT    0031 Private  STDCALL
+print_bin  . . . . . . . . . . .        P Near   00A3     _TEXT    0024 Private  STDCALL
+print_byte_bin . . . . . . . . .        P Near   00C7     _TEXT    0028 Private  STDCALL
+print_hex  . . . . . . . . . . .        P Near   0036     _TEXT    0011 Private  STDCALL
+print_newline  . . . . . . . . .        P Near   00F8     _TEXT    0011 Private  STDCALL
+print_nibble_hex . . . . . . . .        P Near   0047     _TEXT    0028 Private  STDCALL
+print_space  . . . . . . . . . .        P Near   00EF     _TEXT    0009 Private  STDCALL
+print_udec . . . . . . . . . . .        P Near   006F     _TEXT    0034 Private  STDCALL
+read_char  . . . . . . . . . . .        P Near   0031     _TEXT    0005 Private  STDCALL
+
+
+Symbols:
+
+                N a m e                 Type       Value     Attr
+
+@CodeSize  . . . . . . . . . . .        Number             0h 
+@DataSize  . . . . . . . . . . .        Number             0h 
+@Interface . . . . . . . . . . .        Number             3h 
+@Model . . . . . . . . . . . . .        Number             2h 
+@cmdline . . . . . . . . . . . .        Text   OFFSET __98765765cmdline
+@code  . . . . . . . . . . . . .        Text   _TEXT
+@data  . . . . . . . . . . . . .        Text   DGROUP
+@stack . . . . . . . . . . . . .        Text   DGROUP
+ACTION_CREATED_OPENED  . . . . .        Number             2h 
+ACTION_OPENED  . . . . . . . . .        Number             1h 
+ACTION_REPLACED_OPENED . . . . .        Number             3h 
+FILE_CREATE  . . . . . . . . . .        Number            10h 
+FILE_OPEN  . . . . . . . . . . .        Number             1h 
+FILE_TRUNCATE  . . . . . . . . .        Number             2h 
+LIGHT_BLUE . . . . . . . . . . .        Number             9h 
+LIGHT_CYAN . . . . . . . . . . .        Number             Bh 
+LIGHT_GRAY . . . . . . . . . . .        Number             7h 
+LIGHT_GREEN  . . . . . . . . . .        Number             Ah 
+LIGHT_MAGENTA  . . . . . . . . .        Number             Dh 
+LIGHT_RED  . . . . . . . . . . .        Number             Ch 
+OPEN_ACCESS_READONLY . . . . . .        Number             0h 
+OPEN_ACCESS_READWRITE  . . . . .        Number             2h 
+OPEN_ACCESS_RO_NOMODLASTACCESS .        Number             4h 
+OPEN_ACCESS_WRITEONLY  . . . . .        Number             1h 
+OPEN_FLAGS_ALIAS_HINT  . . . . .        Number           400h 
+OPEN_FLAGS_COMMIT  . . . . . . .        Number          4000h 
+OPEN_FLAGS_NOCRITERR . . . . . .        Number          2000h 
+OPEN_FLAGS_NOINHERIT . . . . . .        Number            80h 
+OPEN_FLAGS_NO_BUFFERING  . . . .        Number           100h 
+OPEN_FLAGS_NO_COMPRESS . . . . .        Number           200h 
+OPEN_SHARE_COMPATIBLE  . . . . .        Number             0h 
+OPEN_SHARE_DENYNONE  . . . . . .        Number            40h 
+OPEN_SHARE_DENYREAD  . . . . . .        Number            30h 
+OPEN_SHARE_DENYREADWRITE . . . .        Number            10h 
+OPEN_SHARE_DENYWRITE . . . . . .        Number            20h 
+_A_ARCH  . . . . . . . . . . . .        Number            20h 
+_A_HIDDEN  . . . . . . . . . . .        Number             2h 
+_A_NORMAL  . . . . . . . . . . .        Number             0h 
+_A_RDONLY  . . . . . . . . . . .        Number             1h 
+_A_SYSTEM  . . . . . . . . . . .        Number             4h 
+_A_VOLID . . . . . . . . . . . .        Number             8h 
+black  . . . . . . . . . . . . .        Number             0h 
+blue . . . . . . . . . . . . . .        Number             1h 
+brown  . . . . . . . . . . . . .        Number             6h 
+cyan . . . . . . . . . . . . . .        Number             3h 
+divide . . . . . . . . . . . . .        L Near            80h _TEXT STDCALL
+esc_key  . . . . . . . . . . . .        Byte               0h _DATA STDCALL
+exit . . . . . . . . . . . . . .        Text   .EXIT
+exit_print_bin . . . . . . . . .        L Near            C4h _TEXT STDCALL
+exittest . . . . . . . . . . . .        L Near            ECh _TEXT STDCALL
+gray . . . . . . . . . . . . . .        Number             8h 
+green  . . . . . . . . . . . . .        Number             2h 
+lightBlue  . . . . . . . . . . .        Number             9h 
+lightCyan  . . . . . . . . . . .        Number             Bh 
+lightGray  . . . . . . . . . . .        Number             7h 
+lightGreen . . . . . . . . . . .        Number             Ah 
+lightMagenta . . . . . . . . . .        Number             Dh 
+lightRed . . . . . . . . . . . .        Number             Ch 
+magenta  . . . . . . . . . . . .        Number             5h 
+make_al_nibble . . . . . . . . .        L Near            4Dh _TEXT STDCALL
+newline_char . . . . . . . . . .        Byte[2]            1h _DATA STDCALL
+print  . . . . . . . . . . . . .        L Near            96h _TEXT STDCALL
+print0 . . . . . . . . . . . . .        L Near            E0h _TEXT STDCALL
+print1 . . . . . . . . . . . . .        L Near            D4h _TEXT STDCALL
+print_ . . . . . . . . . . . . .        L Near            B8h _TEXT STDCALL
+print_letter . . . . . . . . . .        L Near            63h _TEXT STDCALL
+print_nibble_hex_exit  . . . . .        L Near            6Bh _TEXT STDCALL
+print_num  . . . . . . . . . . .        L Near            5Bh _TEXT STDCALL
+read . . . . . . . . . . . . . .        L Near             5h _TEXT STDCALL
+red  . . . . . . . . . . . . . .        Number             4h 
+rotate_bin . . . . . . . . . . .        L Near            A8h _TEXT STDCALL
+rotate_hex . . . . . . . . . . .        L Near            3Bh _TEXT STDCALL
+terminate  . . . . . . . . . . .        L Near            2Dh _TEXT STDCALL
+testbit  . . . . . . . . . . . .        L Near            CCh _TEXT STDCALL
+white  . . . . . . . . . . . . .        Number             Fh 
+yellow . . . . . . . . . . . . .        Number             Eh 
+
+.\p6.asm: 257 lines, 2 passes, 0 ms, 0 warnings, 0 errors

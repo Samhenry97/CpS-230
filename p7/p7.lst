@@ -1,0 +1,442 @@
+JWasm v2.11, Oct 20 2013
+p7.asm
+                                ;       Program: Prime Numbers
+                                ;   Description: This program takes a number in EAX and prints a string as to
+                                ; 					whether or not the number is prime.
+                                ;        Author: Sam Henry
+                                ;          Date: 11/12/15
+                                ; Help Received: None
+
+                                include irvine16.inc    ; Include Irvine's code definitions.
+                              C ; Irvine16.inc - Include file for programs using
+                              C ; the Irvine16.lib (Real-address mode library).
+                              C 
+                              C ; Last update: 7/29/05
+                              C 
+                              C .LIST
+
+                                .data
+00000000  206973206E6F742070            nopeNotPrime byte " is not prime", 13, 10, 0
+00000010  206973207072696D65    		yupItsPrime byte " is prime", 13, 10, 0
+0000001C  0D0A00                		newLine byte 13, 10, 0
+
+00000000                        .code
+00000000                        main proc
+00000000  B80000                        mov  ax, DGROUP          ; @data is the data segment that DOS sets up.
+00000003  8ED8                          mov  ds, ax             ; These two lines are required for all programs
+                                	
+00000005                        	readprime:
+00000005  E8C600                        call ReadDec			; Read the number from the user
+00000008  BA1C00                		mov dx, offset newLine
+0000000B  E83E01                		call printstring
+0000000E  6683F800              		cmp eax, 0				; If the user enters a 0, exit the program
+00000012  7405                  		jz terminate
+00000014  E80600                		call isPrime			; Test if the number in EAX is prime
+00000017  EBEC                  		jmp readprime
+
+00000019                        	terminate:
+                                        .EXIT                    ; Terminate the program.
+0000001D                        main endp
+
+                                ;************************************************************************
+                                ; Function: Finds out whether the number passed in EAX is prime. If so,
+                                ; 			prints a message saying so. If not, prints a message saying not.
+                                ; Receives: 32-bit unsigned number in EAX
+                                ;  Returns: Nothing
+                                ; Requires: A valid 32-bit unsigned number in EAX
+                                ; Clobbers: Nothing
+0000001D                        isPrime proc
+0000001D  6660                  		pushad
+                                		
+0000001F  6683F803              		cmp eax, 3			; Test for the basic 1, 2, and 3 values
+00000023  770B                  		ja moveon
+00000025  6683F801              		cmp eax, 1
+00000029  0F878800              		ja printPrime
+0000002D  E99000                		jmp printNotPrime
+                                		
+00000030                        	moveon:
+00000030  6650                  		pushd eax			; Test if divisible by 3
+00000032  66BA00000000          		mov edx, 0
+00000038  66BB03000000          		mov ebx, 3
+0000003E  66F7F3                		div ebx
+00000041  6658                  		pop eax
+00000043  6683FA00              		cmp edx, 0
+00000047  7477                  		jz printNotPrime
+                                		
+00000049  6650                  		pushd eax			; Test if divisible by 2
+0000004B  66BA00000000          		mov edx, 0
+00000051  66BB02000000          		mov ebx, 2
+00000057  66F7F3                		div ebx
+0000005A  6658                  		pop eax
+0000005C  6683FA00              		cmp edx, 0
+00000060  745E                  		jz printNotPrime
+                                    
+00000062  66B905000000          		mov ecx, 5			; ECX = i -- for(int i = 0; i * i < EAX; i += 6)
+00000068                        	testloop:
+00000068  6650                  		pushd eax			; If ECX * ECX > EAX or if ECX * ECX overflows, the number is prime.
+0000006A  668BC1                		mov eax, ecx
+0000006D  668BD9                		mov ebx, ecx
+00000070  66F7E3                		mul ebx
+00000073  668BD8                		mov ebx, eax
+00000076  6658                  		pop eax
+00000078  703B                  		jo printPrime		; ECX * ECX overflow
+0000007A  663BD8                		cmp ebx, eax
+0000007D  7736                  		ja printPrime		; ECX * ECX > EAX
+                                	
+0000007F  6650                  		pushd eax			; If EAX % ECX == 0
+00000081  668BD9                		mov ebx, ecx
+00000084  66BA00000000          		mov edx, 0
+0000008A  66F7F3                		div ebx
+0000008D  6658                  		pop eax
+0000008F  6683FA00              		cmp edx, 0
+00000093  742B                  		jz printNotPrime
+                                		
+00000095  6650                  		pushd eax			; If EAx % (ECX + 2) == 0
+00000097  668BD9                		mov ebx, ecx
+0000009A  6683C302              		add ebx, 2
+0000009E  66BA00000000          		mov edx, 0
+000000A4  66F7F3                		div ebx
+000000A7  6658                  		pop eax
+000000A9  6683FA00              		cmp edx, 0
+000000AD  7411                  		jz printNotPrime
+                                		
+000000AF  6683C106              		add ecx, 6
+000000B3  EBB3                  		jmp testloop		
+                                		
+000000B5                        	printPrime:
+000000B5  E86000                		call print_udec
+000000B8  BA1000                		mov dx, offset yupItsPrime
+000000BB  E88E00                		call printstring
+000000BE  EB0B                  		jmp exitPrime
+                                	
+000000C0                        	printNotPrime:
+000000C0  E85500                		call print_udec
+000000C3  BA0000                		mov dx, offset nopeNotPrime
+000000C6  E88300                		call printstring
+000000C9  EB00                  		jmp exitPrime
+                                		
+000000CB                        	exitPrime:
+000000CB  6661                  		popad
+000000CD                        		ret
+000000CE                        isPrime endp
+
+                                ;************************************************************************
+                                ; Function: Read an unsigned 32-bit number as decimal using BIOS
+                                ; Receives: nothing
+                                ;  Returns: EAX = the number
+                                ; Requires: nothing
+                                ; Clobbers: EAX
+000000CE                        ReadDec proc
+000000CE  6652                  		push edx
+000000D0  6653                  		push ebx
+
+000000D2  66BB0A000000          		mov ebx, 10         ; Multiplier
+000000D8  66BA00000000          		mov edx, 0
+
+000000DE                        	loop_start:
+000000DE  B410                  		mov ah, 10h
+000000E0  CD16                  		int 16h
+
+000000E2  3C0D                  		cmp al, 0dh
+000000E4  742A                  		je  done
+000000E6  3C0A                  		cmp al, 0ah
+000000E8  7426                  		je  done
+
+000000EA  3C30                  		cmp al, '0'
+000000EC  72F0                  		jb  loop_start
+000000EE  3C39                  		cmp al, '9'
+000000F0  77EC                  		ja  loop_start
+
+000000F2  B40E                  		mov ah, 0eh
+000000F4  CD10                  		int 10h             ; Print the digit
+
+000000F6  2C30                  		sub al, '0'
+
+000000F8  6625FF000000          		and eax, 0ffh
+000000FE  6650                  		push eax
+
+00000100  668BC2                		mov eax, edx
+00000103  66F7E3                		mul ebx
+00000106  668BD0                		mov edx, eax
+00000109  6658                  		pop eax
+0000010B  6603D0                		add edx, eax
+0000010E  EBCE                  		jmp loop_start
+
+00000110                        	done:
+
+00000110  668BC2                		mov eax, edx
+00000113  665B                  		pop ebx
+00000115  665A                  		pop edx
+00000117                        		ret
+00000118                        ReadDec endp
+
+                                ;************************************************************************
+                                ; Function: Prints a decimal number to the screen in eax
+                                ; Receives: The number to print in eax
+                                ;  Returns: Nothing
+                                ; Requires: An unsigned number in eax
+                                ; Clobbers: Nothing
+00000118                        print_udec proc
+00000118  6660                  		pushad
+0000011A  B90000                		mov cx, 0		; Set the loop counter to 0
+0000011D  66BB0A000000          		mov ebx, 10		; This is the divisor
+00000123  66BA00000000          		mov edx, 0		; Set the top half of the divident to 0 (only eax needed)
+                                		
+00000129                        	divide:
+00000129  41                    		inc cx			; Increment the loop counter
+0000012A  66F7F3                		div ebx
+0000012D  6683C230              		add edx, 30h	; Put the ASCII value of the number in dx
+00000131  6652                  		pushd edx		; Push the number onto the stack
+00000133  66BA00000000          		mov edx, 0		; The top half of the dividend will always be 0 now that the first divide is done
+00000139  6683F800              		cmp eax, 0		; If the quotient is 0, then we're done
+0000013D  75EA                  		jnz divide
+                                		
+0000013F                        	print:
+0000013F  665A                  		pop edx			; Take the number off the stack
+00000141  8AC2                  		mov al, dl		; Print it to the screen
+00000143  B40E                  		mov ah, 0eh
+00000145  CD10                  		int 10h
+00000147  E2F6                  		loopw print
+                                		
+00000149  6661                  		popad			; Reload the registers so you don't clobber them
+0000014B                        		ret
+0000014C                        print_udec endp
+
+                                ;************************************************************************
+                                ; Function: Prints a string with a null terminator, 0
+                                ; Receives: The dx register containing the address of the string
+                                ;  Returns: Nothing at all
+                                ; Requires: A null terminator, 0, at the end of the string and the
+                                ;             address of the string stored in dx
+                                ; Clobbers: Nothing
+0000014C                        printstring proc
+0000014C  50                    		push ax
+0000014D  6652                  		pushd edx
+                                		
+0000014F                        	printchar:
+0000014F  678A02                		mov al, [edx]
+00000152  3C00                  		cmp al, 0
+00000154  7408                  		jz return			;If the character in al is 0, the null terminator, then exit the function
+                                		
+00000156  B40E                  		mov ah, 0eh
+00000158  CD10                  		int 10h				;Print the character of the string
+0000015A  6642                  		inc edx				;Move to the next character's address
+0000015C  EBF1                  		jmp printchar		;Goes back to the beginning with the next character's address in edx
+                                		
+0000015E                        	return:
+0000015E  665A                  		pop edx
+00000160  58                    		pop ax
+00000161                        		ret
+00000162                        printstring endp
+
+                                end main
+
+
+Macros:
+
+                N a m e                 Type
+
+@CatStr  . . . . . . . . . . . .        Func
+@Environ . . . . . . . . . . . .        Func
+@InStr . . . . . . . . . . . . .        Func
+@SizeStr . . . . . . . . . . . .        Func
+@SubStr  . . . . . . . . . . . .        Func
+
+
+Structures and Unions:
+
+                N a m e                 Size/Ofs   Type
+
+CursorPosStruc . . . . . . . . .               2
+  Ycoord . . . . . . . . . . . .               0   Byte
+  Xcoord . . . . . . . . . . . .               1   Byte
+ExtGetDskFreSpcStruc . . . . . .              2C
+  StructSize . . . . . . . . . .               0   Word
+  Level  . . . . . . . . . . . .               2   Word
+  SectorsPerCluster  . . . . . .               4   DWord
+  BytesPerSector . . . . . . . .               8   DWord
+  AvailableClusters  . . . . . .               C   DWord
+  TotalClusters  . . . . . . . .              10   DWord
+  AvailablePhysSectors . . . . .              14   DWord
+  TotalPhysSectors . . . . . . .              18   DWord
+  AvailableAllocationUnits . . .              1C   DWord
+  TotalAllocationUnits . . . . .              20   DWord
+  Rsvd . . . . . . . . . . . . .              24   DWord[2]
+FPU_ENVIRON  . . . . . . . . . .              1C
+  controlWord  . . . . . . . . .               0   Word
+  statusWord . . . . . . . . . .               4   Word
+  tagWord  . . . . . . . . . . .               8   Word
+  instrPtrLow  . . . . . . . . .               C   Word
+  opcodeAndInstrPtrHi  . . . . .              10   DWord
+  operandPtrLow  . . . . . . . .              14   Word
+  operandPtrHi . . . . . . . . .              18   DWord
+TimeRecord . . . . . . . . . . .               4
+  hours  . . . . . . . . . . . .               0   Byte
+  minutes  . . . . . . . . . . .               1   Byte
+  seconds  . . . . . . . . . . .               2   Byte
+  hhss . . . . . . . . . . . . .               3   Byte
+VideoInfoStruc . . . . . . . . .              41
+  supportedInfoPtr . . . . . . .               0   DWord
+  videoMode  . . . . . . . . . .               4   Byte
+  numCharColumns . . . . . . . .               5   Word
+  videoBufferLen . . . . . . . .               7   Word
+  videoBufferStartPtr  . . . . .               9   Word
+  cursors  . . . . . . . . . . .               B   CursorPosStruc[8]
+  cursorStartLine  . . . . . . .              1B   Byte
+  cursorEndLine  . . . . . . . .              1C   Byte
+  activeDisplayPage  . . . . . .              1D   Byte
+  adapterBasePortAddr  . . . . .              1E   Word
+  currentRegister3B8or3D8  . . .              20   Byte
+  currentRegister3B9or3D9  . . .              21   Byte
+  numCharRows  . . . . . . . . .              22   Byte
+  characterScanHeight  . . . . .              23   Word
+  activeDisplayCode  . . . . . .              25   Byte
+  inactiveDisplayCode  . . . . .              26   Byte
+  numberOfColors . . . . . . . .              27   Word
+  numberOfVideoPages . . . . . .              29   Byte
+  numberOfScanLines  . . . . . .              2A   Word
+  primaryCharBlock . . . . . . .              2C   Byte
+  secondaryCharBlock . . . . . .              2D   Byte
+  miscStateInfo  . . . . . . . .              2E   Byte
+  videoMemAvail  . . . . . . . .              32   Byte
+  savePointerStateInfo . . . . .              33   Byte
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+$$SYMBOLS  . . . . . . . . . . .        32 Bit   00000289 Byte    Private 'DEBSYM'
+$$TYPES  . . . . . . . . . . . .        32 Bit   000005EA Byte    Private 'DEBTYP'
+_TEXT  . . . . . . . . . . . . .        16 Bit   0162     Word    Public  'CODE'
+DGROUP . . . . . . . . . . . . .        GROUP
+_DATA  . . . . . . . . . . . . .        16 Bit   001F     Word    Public  'DATA'
+STACK  . . . . . . . . . . . . .        16 Bit   0200     Para    Stack   'STACK'
+
+
+Procedures, parameters and locals:
+
+                N a m e                 Type     Value    Segment  Length
+
+Clrscr . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Crlf . . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Delay  . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+DumpMem  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+DumpRegs . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetCommandtail . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetMaxXY . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetMseconds  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Gotoxy . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+IsDigit  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Random32 . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+RandomRange  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Randomize  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadChar . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadDec  . . . . . . . . . . . .        P Near   00CE     _TEXT    004A Private  STDCALL
+ReadFloat  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadHex  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadInt  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadString . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+SetTextColor . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ShowFPUStack . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_compare  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_copy . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_length . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_trim . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_ucase  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WaitMsg  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteBin . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteBinB  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteChar  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteDec . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteFloat . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteHex . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteHexB  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteInt . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteString  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+isPrime  . . . . . . . . . . . .        P Near   001D     _TEXT    00B1 Private  STDCALL
+main . . . . . . . . . . . . . .        P Near   0000     _TEXT    001D Private  STDCALL
+print_udec . . . . . . . . . . .        P Near   0118     _TEXT    0034 Private  STDCALL
+printstring  . . . . . . . . . .        P Near   014C     _TEXT    0016 Private  STDCALL
+
+
+Symbols:
+
+                N a m e                 Type       Value     Attr
+
+@CodeSize  . . . . . . . . . . .        Number             0h 
+@DataSize  . . . . . . . . . . .        Number             0h 
+@Interface . . . . . . . . . . .        Number             3h 
+@Model . . . . . . . . . . . . .        Number             2h 
+@cmdline . . . . . . . . . . . .        Text   OFFSET __98765765cmdline
+@code  . . . . . . . . . . . . .        Text   _TEXT
+@data  . . . . . . . . . . . . .        Text   DGROUP
+@stack . . . . . . . . . . . . .        Text   DGROUP
+ACTION_CREATED_OPENED  . . . . .        Number             2h 
+ACTION_OPENED  . . . . . . . . .        Number             1h 
+ACTION_REPLACED_OPENED . . . . .        Number             3h 
+FILE_CREATE  . . . . . . . . . .        Number            10h 
+FILE_OPEN  . . . . . . . . . . .        Number             1h 
+FILE_TRUNCATE  . . . . . . . . .        Number             2h 
+LIGHT_BLUE . . . . . . . . . . .        Number             9h 
+LIGHT_CYAN . . . . . . . . . . .        Number             Bh 
+LIGHT_GRAY . . . . . . . . . . .        Number             7h 
+LIGHT_GREEN  . . . . . . . . . .        Number             Ah 
+LIGHT_MAGENTA  . . . . . . . . .        Number             Dh 
+LIGHT_RED  . . . . . . . . . . .        Number             Ch 
+OPEN_ACCESS_READONLY . . . . . .        Number             0h 
+OPEN_ACCESS_READWRITE  . . . . .        Number             2h 
+OPEN_ACCESS_RO_NOMODLASTACCESS .        Number             4h 
+OPEN_ACCESS_WRITEONLY  . . . . .        Number             1h 
+OPEN_FLAGS_ALIAS_HINT  . . . . .        Number           400h 
+OPEN_FLAGS_COMMIT  . . . . . . .        Number          4000h 
+OPEN_FLAGS_NOCRITERR . . . . . .        Number          2000h 
+OPEN_FLAGS_NOINHERIT . . . . . .        Number            80h 
+OPEN_FLAGS_NO_BUFFERING  . . . .        Number           100h 
+OPEN_FLAGS_NO_COMPRESS . . . . .        Number           200h 
+OPEN_SHARE_COMPATIBLE  . . . . .        Number             0h 
+OPEN_SHARE_DENYNONE  . . . . . .        Number            40h 
+OPEN_SHARE_DENYREAD  . . . . . .        Number            30h 
+OPEN_SHARE_DENYREADWRITE . . . .        Number            10h 
+OPEN_SHARE_DENYWRITE . . . . . .        Number            20h 
+_A_ARCH  . . . . . . . . . . . .        Number            20h 
+_A_HIDDEN  . . . . . . . . . . .        Number             2h 
+_A_NORMAL  . . . . . . . . . . .        Number             0h 
+_A_RDONLY  . . . . . . . . . . .        Number             1h 
+_A_SYSTEM  . . . . . . . . . . .        Number             4h 
+_A_VOLID . . . . . . . . . . . .        Number             8h 
+black  . . . . . . . . . . . . .        Number             0h 
+blue . . . . . . . . . . . . . .        Number             1h 
+brown  . . . . . . . . . . . . .        Number             6h 
+cyan . . . . . . . . . . . . . .        Number             3h 
+divide . . . . . . . . . . . . .        L Near           129h _TEXT STDCALL
+done . . . . . . . . . . . . . .        L Near           110h _TEXT STDCALL
+exit . . . . . . . . . . . . . .        Text   .EXIT
+exitPrime  . . . . . . . . . . .        L Near            CBh _TEXT STDCALL
+gray . . . . . . . . . . . . . .        Number             8h 
+green  . . . . . . . . . . . . .        Number             2h 
+lightBlue  . . . . . . . . . . .        Number             9h 
+lightCyan  . . . . . . . . . . .        Number             Bh 
+lightGray  . . . . . . . . . . .        Number             7h 
+lightGreen . . . . . . . . . . .        Number             Ah 
+lightMagenta . . . . . . . . . .        Number             Dh 
+lightRed . . . . . . . . . . . .        Number             Ch 
+loop_start . . . . . . . . . . .        L Near            DEh _TEXT STDCALL
+magenta  . . . . . . . . . . . .        Number             5h 
+moveon . . . . . . . . . . . . .        L Near            30h _TEXT STDCALL
+newLine  . . . . . . . . . . . .        Byte[3]           1Ch _DATA STDCALL
+nopeNotPrime . . . . . . . . . .        Byte[16]           0h _DATA STDCALL
+print  . . . . . . . . . . . . .        L Near           13Fh _TEXT STDCALL
+printNotPrime  . . . . . . . . .        L Near            C0h _TEXT STDCALL
+printPrime . . . . . . . . . . .        L Near            B5h _TEXT STDCALL
+printchar  . . . . . . . . . . .        L Near           14Fh _TEXT STDCALL
+readprime  . . . . . . . . . . .        L Near             5h _TEXT STDCALL
+red  . . . . . . . . . . . . . .        Number             4h 
+return . . . . . . . . . . . . .        L Near           15Eh _TEXT STDCALL
+terminate  . . . . . . . . . . .        L Near            19h _TEXT STDCALL
+testloop . . . . . . . . . . . .        L Near            68h _TEXT STDCALL
+white  . . . . . . . . . . . . .        Number             Fh 
+yellow . . . . . . . . . . . . .        Number             Eh 
+yupItsPrime  . . . . . . . . . .        Byte[12]          10h _DATA STDCALL
+
+p7.asm: 224 lines, 2 passes, 0 ms, 0 warnings, 0 errors

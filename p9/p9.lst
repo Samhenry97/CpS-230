@@ -1,0 +1,265 @@
+JWasm v2.11, Oct 20 2013
+p9.asm
+                                ;       Program: Drawing Lines
+                                ;   Description: 
+                                ;        Author: Sam Henry
+                                ;          Date: 11/23/15
+                                ; Help Received: None
+
+                                .model tiny     ; Tiny model: one code/data segment (CS==DS)
+                                .386            ; Support for 32-bit registers/instructions
+                                .stack 100h     ; Required to avoid warnings (and actually useful, too)
+
+ = 140                          ROWSIZE equ 320
+ = C8                           COLSIZE equ 200
+
+                                .code
+
+                                ;************************************************************************
+                                ; Function: Program Entry Point
+                                ; Receives: Nothing
+                                ; Returns: Nothing
+                                ; Requires: Nothing
+                                ; Clobbers: Any/All
+00000000                        main proc
+00000000  8CC8                  		mov	ax, cs			; Set DS == CS (one segment model)
+00000002  8ED8                  		mov	ds, ax
+                                		
+00000004  B81300                		mov ax, 0013h		; Change to text graphics mode
+00000007  CD10                  		int 10h
+00000009  B800A0                		mov ax, 0a000h
+0000000C  8EC0                  		mov es, ax
+                                		
+0000000E  6A32                  		push 50
+00000010  6A32                  		push 50
+00000012  6A32                  		push 50
+00000014  689600                		push 150
+00000017  6A70                  		push 070h
+00000019  E82300                		call drawline
+                                		
+0000001C  6A00                  		push 0
+0000001E  6A09                  		push 9
+00000020  68C700                		push 199
+00000023  6A00                  		push 0
+00000025  6A0F                  		push 0fh
+00000027  E81500                		call drawline
+                                		
+0000002A  6A32                  		push 50
+0000002C  6A64                  		push 100
+0000002E  6A00                  		push 0
+00000030  6A00                  		push 0
+                                		
+00000032  B410                  		mov ah, 10h			; Read a character
+00000034  CD16                  		int 16h
+                                		
+00000036  B80300                		mov ax, 0003h					; Change back to regular video mode
+00000039  CD10                  		int 10h
+                                		
+0000003B  B44C                  		mov	ah, 4Ch						; Exit the program
+0000003D  CD21                  		int	21h
+0000003F                        main endp
+
+                                ; Parameters
+ = [bp + 12]                    X1 equ [bp + 12]
+ = [bp + 8]                     X2 equ [bp + 8]
+ = [bp + 10]                    Y1 equ [bp + 10]
+ = [bp + 6]                     Y2 equ [bp + 6]
+ = [bp + 4]                     COL equ [bp + 4]
+
+                                ; Local variables
+ = [bp - 2]                     DeltaY equ [bp - 2]
+ = [bp - 4]                     DeltaX equ [bp - 4]
+ = [bp - 6]                     LastY equ [bp - 6]
+
+0000003F                        drawline proc ; x1, y1, x2, y2, col
+0000003F  55                    		push bp
+00000040  8BEC                  		mov bp, sp
+00000042  83EC06                		sub sp, 6	
+                                		
+00000045  FF760C                		push [bp + 12]
+00000048  FF760A                		push [bp + 10]
+0000004B  FF7604                		push [bp + 4]
+0000004E  E8B800                		call drawpixel
+                                		
+00000051  8B4608                		mov ax, [bp + 8]
+00000054  2B460C                		sub ax, [bp + 12]
+00000057  8946FC                		mov [bp - 4], ax
+0000005A  8B4606                		mov ax, [bp + 6]
+0000005D  2B460A                		sub ax, [bp + 10]
+00000060  8946FE                		mov [bp - 2], ax
+                                		
+00000063  837EFC00              		cmp word ptr [bp - 4], 0
+00000067  7468                  		jz draw_vertical
+                                		
+00000069  837EFE00              		cmp word ptr [bp - 2], 0
+0000006D  7431                  		jz draw_horizontal
+                                		
+0000006F  8B460A                		mov ax, [bp + 10]
+00000072  3B4606                		cmp ax, [bp + 6]
+00000075  7C09                  		jl start
+00000077  8B5E06                		mov bx, [bp + 6]
+0000007A  895E0A                		mov [bp + 10], bx
+0000007D  894606                		mov [bp + 6], ax
+                                		
+00000080                        	start:
+00000080  8B4E0A                		mov cx, [bp + 10]
+00000083                        	loopy:
+00000083  41                    		inc cx
+00000084  3B4E06                		cmp cx, [bp + 6]
+00000087  7479                  		je epilog
+00000089  8BC1                  		mov ax, cx
+0000008B  8B5EFC                		mov bx, [bp - 4]
+0000008E  F7E3                  		mul bx
+00000090  99                    		cwd
+00000091  8B5EFE                		mov bx, [bp - 2]
+00000094  F7F3                  		div bx
+00000096  50                    		push ax
+00000097  51                    		push cx
+00000098  FF7604                		push [bp + 4]
+0000009B  E86B00                		call drawpixel
+0000009E  EBE3                  		jmp loopy
+                                		
+000000A0                        	draw_horizontal:
+000000A0  8B460C                		mov ax, [bp + 12]
+000000A3  837EFC00              		cmp word ptr [bp - 4], 0
+000000A7  7C04                  		jl draw_dec_horizontal
+000000A9  7F14                  		jg draw_inc_horizontal
+000000AB  7455                  		jz epilog
+000000AD                        	draw_dec_horizontal:
+000000AD  48                    		dec ax
+000000AE  3B4608                		cmp ax, [bp + 8]
+000000B1  744F                  		je epilog
+000000B3  50                    		push ax
+000000B4  FF760A                		push [bp + 10]
+000000B7  FF7604                		push [bp + 4]
+000000BA  E84C00                		call drawpixel
+000000BD  EBEE                  		jmp draw_dec_horizontal
+000000BF                        	draw_inc_horizontal:
+000000BF  40                    		inc ax
+000000C0  3B4608                		cmp ax, [bp + 8]
+000000C3  743D                  		je epilog
+000000C5  50                    		push ax
+000000C6  FF760A                		push [bp + 10]
+000000C9  FF7604                		push [bp + 4]
+000000CC  E83A00                		call drawpixel
+000000CF  EBEE                  		jmp draw_inc_horizontal
+                                		
+                                		
+000000D1                        	draw_vertical:
+000000D1  8B460A                		mov ax, [bp + 10]
+000000D4  837EFE00              		cmp word ptr [bp - 2], 0
+000000D8  7C04                  		jl draw_dec_vertical
+000000DA  7F14                  		jg draw_inc_vertical
+000000DC  7424                  		jz epilog
+000000DE                        	draw_dec_vertical:
+000000DE  48                    		dec ax
+000000DF  3B4606                		cmp ax, [bp + 6]
+000000E2  741E                  		je epilog
+000000E4  FF760C                		push [bp + 12]
+000000E7  50                    		push ax
+000000E8  FF7604                		push [bp + 4]
+000000EB  E81B00                		call drawpixel
+000000EE  EBEE                  		jmp draw_dec_vertical
+000000F0                        	draw_inc_vertical:
+000000F0  40                    		inc ax
+000000F1  3B4606                		cmp ax, [bp + 6]
+000000F4  740C                  		je epilog
+000000F6  FF760C                		push [bp + 12]
+000000F9  50                    		push ax
+000000FA  FF7604                		push [bp + 4]
+000000FD  E80900                		call drawpixel
+00000100  EBEE                  		jmp draw_inc_vertical				
+                                		
+00000102                        	epilog:
+00000102  83C406                		add sp, 6
+00000105  5D                    		pop bp
+00000106                        		ret 10
+00000109                        drawline endp
+
+00000109                        drawpixel proc ; x, y, col
+00000109  55                    		push bp
+0000010A  8BEC                  		mov bp, sp
+0000010C  60                    		pusha
+                                		
+0000010D  8B4606                		mov ax, [bp + 6]
+00000110  BB4001                		mov bx, ROWSIZE
+00000113  F7E3                  		mul bx
+00000115  8BD8                  		mov bx, ax
+                                		
+00000117  035E08                		add bx, [bp + 8]
+                                		
+0000011A  8A4604                		mov al, [bp + 4]
+0000011D  268807                		mov es:[bx], al
+                                		
+00000120  61                    		popa
+00000121  5D                    		pop bp
+00000122                        		ret 6
+00000125                        drawpixel endp
+
+                                end main
+
+
+Macros:
+
+                N a m e                 Type
+
+@CatStr  . . . . . . . . . . . .        Func
+@Environ . . . . . . . . . . . .        Func
+@InStr . . . . . . . . . . . . .        Func
+@SizeStr . . . . . . . . . . . .        Func
+@SubStr  . . . . . . . . . . . .        Func
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+$$SYMBOLS  . . . . . . . . . . .        32 Bit   00000170 Byte    Private 'DEBSYM'
+$$TYPES  . . . . . . . . . . . .        32 Bit   0000003A Byte    Private 'DEBTYP'
+DGROUP . . . . . . . . . . . . .        GROUP
+_TEXT  . . . . . . . . . . . . .        16 Bit   0125     Word    Public  'CODE'
+_DATA  . . . . . . . . . . . . .        16 Bit   0000     Word    Public  'DATA'
+STACK  . . . . . . . . . . . . .        16 Bit   0100     Para    Stack   'STACK'
+
+
+Procedures, parameters and locals:
+
+                N a m e                 Type     Value    Segment  Length
+
+drawline . . . . . . . . . . . .        P Near   003F     _TEXT    00CA Private  
+drawpixel  . . . . . . . . . . .        P Near   0109     _TEXT    001C Private  
+main . . . . . . . . . . . . . .        P Near   0000     _TEXT    003F Private  
+
+
+Symbols:
+
+                N a m e                 Type       Value     Attr
+
+@CodeSize  . . . . . . . . . . .        Number             0h 
+@DataSize  . . . . . . . . . . .        Number             0h 
+@Interface . . . . . . . . . . .        Number             0h 
+@Model . . . . . . . . . . . . .        Number             1h 
+@code  . . . . . . . . . . . . .        Text   _TEXT
+@data  . . . . . . . . . . . . .        Text   DGROUP
+@stack . . . . . . . . . . . . .        Text   DGROUP
+COL  . . . . . . . . . . . . . .        Text   [bp + 4]
+COLSIZE  . . . . . . . . . . . .        Number            C8h 
+DeltaX . . . . . . . . . . . . .        Text   [bp - 4]
+DeltaY . . . . . . . . . . . . .        Text   [bp - 2]
+LastY  . . . . . . . . . . . . .        Text   [bp - 6]
+ROWSIZE  . . . . . . . . . . . .        Number           140h 
+X1 . . . . . . . . . . . . . . .        Text   [bp + 12]
+X2 . . . . . . . . . . . . . . .        Text   [bp + 8]
+Y1 . . . . . . . . . . . . . . .        Text   [bp + 10]
+Y2 . . . . . . . . . . . . . . .        Text   [bp + 6]
+draw_dec_horizontal  . . . . . .        L Near            ADh _TEXT 
+draw_dec_vertical  . . . . . . .        L Near            DEh _TEXT 
+draw_horizontal  . . . . . . . .        L Near            A0h _TEXT 
+draw_inc_horizontal  . . . . . .        L Near            BFh _TEXT 
+draw_inc_vertical  . . . . . . .        L Near            F0h _TEXT 
+draw_vertical  . . . . . . . . .        L Near            D1h _TEXT 
+epilog . . . . . . . . . . . . .        L Near           102h _TEXT 
+loopy  . . . . . . . . . . . . .        L Near            83h _TEXT 
+start  . . . . . . . . . . . . .        L Near            80h _TEXT 
+
+p9.asm: 197 lines, 2 passes, 15 ms, 0 warnings, 0 errors

@@ -1,0 +1,92 @@
+JWlink Version 1.9beta 13
+Portions Copyright (c) 1985-2002 Sybase, Inc. All Rights Reserved.
+Created on:       15/10/05 08:53:05
+Executable Image: .\keyboard.exe
+creating a DOS executable
+
+
+                        +------------+
+                        |   Groups   |
+                        +------------+
+
+Group                           Address              Size
+=====                           =======              ====
+
+DGROUP                          0083:0006            0000082a
+
+
+
+                        +--------------+
+                        |   Segments   |
+                        +--------------+
+
+Segment                Class          Group          Address         Size
+=======                =====          =====          =======         ====
+
+_TEXT                  CODE           AUTO           0000:0000       00000836
+_DATA                  DATA           DGROUP         0083:0006       0000021d
+STACK                  STACK          DGROUP         00a6:0000       00000400
+_BSS                   BSS            DGROUP         00e6:0000       00000200
+
+
+                        +----------------+
+                        |   Memory Map   |
+                        +----------------+
+
+* = unreferenced symbol
++ = symbol only referenced locally
+
+Address        Symbol
+=======        ======
+
+Module: c:\Irvine\Irvine16.lib(irvine16.asm)
+0000:010d*     _GetCommandtail@0
+0000:004a*     _Delay@0
+0000:06ec*     _WriteDec@0
+0000:0169*     _GetMseconds@0
+0000:07d7      _WriteInt@0
+0000:055f*     _ReadString@0
+0000:0142*     _GetMaxXY@0
+0000:03bf*     _IsDigit@0
+0000:0028*     _Clrscr@0
+0000:047f*     _ReadInt@0
+0000:0414      _ReadChar@0
+0000:0726*     _WriteHex@0
+0000:0419*     _ReadHex@0
+0000:0656*     _WaitMsg@0
+0000:0826*     _WriteString@0
+0000:057c*     _SetTextColor@0
+0000:01de*     _Gotoxy@0
+0000:01e7*     _HexByte@0
+0000:05d0*     _Str_copy@4
+0000:0041*     _Crlf@0
+0000:0216*     _DumpRegs@0
+0000:066a*     _WriteBin@0
+0000:05a6*     _Str_compare@4
+0000:0634*     _Str_ucase@2
+0000:0734*     _WriteHexB@0
+0000:05f1*     _Str_length@2
+0000:06e1*     _WriteChar@0
+0000:0678*     _WriteBinB@0
+0000:0076*     _DumpMem@0
+0000:03ea*     _Random32@0
+0000:0609*     _Str_trim@4
+0000:03cb*     _RandomRange@0
+0000:0408*     _Randomize@0
+
+
+                        +--------------------+
+                        |   Libraries Used   |
+                        +--------------------+
+
+c:\Irvine\Irvine16.lib
+
+
+                        +-----------------------+
+                        |   Linker Statistics   |
+                        +-----------------------+
+
+Stack size:  0400 (1024.)
+Memory size:  1060 (4192.)
+Entry point address: 0000:0000
+Link time: 00:00.00

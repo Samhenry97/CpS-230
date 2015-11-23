@@ -1,0 +1,279 @@
+JWasm v2.11, Oct 20 2013
+.\p5.asm
+                                ; **************************************************************
+                                ;       Program: Program 5, Print String
+                                ;   Description: This program prints a string to the screen
+                                ;                  using a procedure created by me.
+                                ;        Author: Sam Henry
+                                ;         Notes: In order for the printstring to work, you must
+                                ;                   store the address of the string in dx and
+                                ;                   call printstring
+                                ;          Date: October 13, 2015
+                                ; Help Received: None
+                                ; **************************************************************
+
+                                include irvine16.inc
+                              C ; Irvine16.inc - Include file for programs using
+                              C ; the Irvine16.lib (Real-address mode library).
+                              C 
+                              C ; Last update: 7/29/05
+                              C 
+                              C .LIST
+
+                                .data
+00000000  00                    		string1 byte 0
+00000001  636F7574203C3C2022    		string2 byte "cout << ", 22h, "Hello world!", 22h, " << endl;", 0dh, 0ah, 0
+00000023  B2B2B2B2B2B2B2B2B2    		string3 byte 11 dup(0b2h), 0dh, 0ah, 0
+00000031  B2C9CDD1CDCBCDD1CD    		string4 byte 0b2h, 0c9h, 0cdh, 0d1h, 0cdh, 0cbh, 0cdh, 0d1h, 0cdh, 0bbh, 0b2h, 0dh, 0ah, 0
+0000003F  B2C7C4C5C4D7C4C5C4    		string5 byte 0b2h, 0c7h, 0c4h, 0c5h, 0c4h, 0d7h, 0c4h, 0c5h, 0c4h, 0b6h, 0b2h, 0dh, 0ah, 0
+0000004D  B2C8CDCFCDCACDCFCD    		string6 byte 0b2h, 0c8h, 0cdh, 0cfh, 0cdh, 0cah, 0cdh, 0cfh, 0cdh, 0bch, 0b2h, 0dh, 0ah, 0
+                                		
+00000000                        .code
+00000000                        main proc
+00000000  B80000                        mov  ax, DGROUP          ; @data is the data segment that DOS sets up.
+00000003  8ED8                          mov  ds, ax             ; These two lines are required for all programs
+                                				
+00000005  BA0000                		mov dx, offset string1	; Move the address of the string into dx
+00000008  E82800                		call printstring		; Print the string using the first address, dx
+                                		
+0000000B  BA0100                		mov dx, offset string2
+0000000E  E82200                		call printstring
+                                		
+00000011  BA2300                		mov dx, offset string3
+00000014  E81C00                		call printstring
+                                		
+00000017  BA3100                		mov dx, offset string4
+0000001A  E81600                		call printstring
+                                		
+0000001D  BA3F00                		mov dx, offset string5
+00000020  E81000                		call printstring
+                                		
+00000023  BA4D00                		mov dx, offset string6
+00000026  E80A00                		call printstring
+                                		
+00000029  BA2300                		mov dx, offset string3
+0000002C  E80400                		call printstring
+
+                                        .EXIT                    ; Terminate the program.
+00000033                        main endp
+
+                                ; Function: Prints a string with a null terminator, 0
+                                ; Receives: The dx register containing the address of the string
+                                ;  Returns: Nothing at all
+                                ; Requires: A null terminator, 0, at the end of the string and the
+                                ;             address of the string stored in dx
+                                ; Clobbers: Only the ax register for printing each character - ax is
+                                ;             being used by the interrupt calls
+00000033                        printstring proc
+00000033  678A02                		mov al, [edx]
+00000036  3C00                  		cmp al, 0
+00000038  7408                  		jz return			;If the character in al is 0, the null terminator, then exit the function
+                                		
+0000003A  B40E                  		mov ah, 0eh
+0000003C  CD10                  		int 10h				;Print the character of the string
+0000003E  6642                  		inc edx				;Move to the next character's address
+00000040  EBF1                  		jmp printstring		;Goes back to the beginning with the next character's address in edx
+                                		
+00000042                        	return:
+00000042                        		ret
+00000043                        printstring endp
+
+                                end main
+
+
+Macros:
+
+                N a m e                 Type
+
+@CatStr  . . . . . . . . . . . .        Func
+@Environ . . . . . . . . . . . .        Func
+@InStr . . . . . . . . . . . . .        Func
+@SizeStr . . . . . . . . . . . .        Func
+@SubStr  . . . . . . . . . . . .        Func
+
+
+Structures and Unions:
+
+                N a m e                 Size/Ofs   Type
+
+CursorPosStruc . . . . . . . . .               2
+  Ycoord . . . . . . . . . . . .               0   Byte
+  Xcoord . . . . . . . . . . . .               1   Byte
+ExtGetDskFreSpcStruc . . . . . .              2C
+  StructSize . . . . . . . . . .               0   Word
+  Level  . . . . . . . . . . . .               2   Word
+  SectorsPerCluster  . . . . . .               4   DWord
+  BytesPerSector . . . . . . . .               8   DWord
+  AvailableClusters  . . . . . .               C   DWord
+  TotalClusters  . . . . . . . .              10   DWord
+  AvailablePhysSectors . . . . .              14   DWord
+  TotalPhysSectors . . . . . . .              18   DWord
+  AvailableAllocationUnits . . .              1C   DWord
+  TotalAllocationUnits . . . . .              20   DWord
+  Rsvd . . . . . . . . . . . . .              24   DWord[2]
+FPU_ENVIRON  . . . . . . . . . .              1C
+  controlWord  . . . . . . . . .               0   Word
+  statusWord . . . . . . . . . .               4   Word
+  tagWord  . . . . . . . . . . .               8   Word
+  instrPtrLow  . . . . . . . . .               C   Word
+  opcodeAndInstrPtrHi  . . . . .              10   DWord
+  operandPtrLow  . . . . . . . .              14   Word
+  operandPtrHi . . . . . . . . .              18   DWord
+TimeRecord . . . . . . . . . . .               4
+  hours  . . . . . . . . . . . .               0   Byte
+  minutes  . . . . . . . . . . .               1   Byte
+  seconds  . . . . . . . . . . .               2   Byte
+  hhss . . . . . . . . . . . . .               3   Byte
+VideoInfoStruc . . . . . . . . .              41
+  supportedInfoPtr . . . . . . .               0   DWord
+  videoMode  . . . . . . . . . .               4   Byte
+  numCharColumns . . . . . . . .               5   Word
+  videoBufferLen . . . . . . . .               7   Word
+  videoBufferStartPtr  . . . . .               9   Word
+  cursors  . . . . . . . . . . .               B   CursorPosStruc[8]
+  cursorStartLine  . . . . . . .              1B   Byte
+  cursorEndLine  . . . . . . . .              1C   Byte
+  activeDisplayPage  . . . . . .              1D   Byte
+  adapterBasePortAddr  . . . . .              1E   Word
+  currentRegister3B8or3D8  . . .              20   Byte
+  currentRegister3B9or3D9  . . .              21   Byte
+  numCharRows  . . . . . . . . .              22   Byte
+  characterScanHeight  . . . . .              23   Word
+  activeDisplayCode  . . . . . .              25   Byte
+  inactiveDisplayCode  . . . . .              26   Byte
+  numberOfColors . . . . . . . .              27   Word
+  numberOfVideoPages . . . . . .              29   Byte
+  numberOfScanLines  . . . . . .              2A   Word
+  primaryCharBlock . . . . . . .              2C   Byte
+  secondaryCharBlock . . . . . .              2D   Byte
+  miscStateInfo  . . . . . . . .              2E   Byte
+  videoMemAvail  . . . . . . . .              32   Byte
+  savePointerStateInfo . . . . .              33   Byte
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+$$SYMBOLS  . . . . . . . . . . .        32 Bit   0000015E Byte    Private 'DEBSYM'
+$$TYPES  . . . . . . . . . . . .        32 Bit   000005D4 Byte    Private 'DEBTYP'
+_TEXT  . . . . . . . . . . . . .        16 Bit   0043     Word    Public  'CODE'
+DGROUP . . . . . . . . . . . . .        GROUP
+_DATA  . . . . . . . . . . . . .        16 Bit   005B     Word    Public  'DATA'
+STACK  . . . . . . . . . . . . .        16 Bit   0200     Para    Stack   'STACK'
+
+
+Procedures, parameters and locals:
+
+                N a m e                 Type     Value    Segment  Length
+
+Clrscr . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Crlf . . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Delay  . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+DumpMem  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+DumpRegs . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetCommandtail . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetMaxXY . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+GetMseconds  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Gotoxy . . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+IsDigit  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Random32 . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+RandomRange  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Randomize  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadChar . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadFloat  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadHex  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadInt  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ReadString . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+SetTextColor . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+ShowFPUStack . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_compare  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_copy . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_length . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_trim . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+Str_ucase  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WaitMsg  . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteBin . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteBinB  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteChar  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteDec . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteFloat . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteHex . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteHexB  . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteInt . . . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+WriteString  . . . . . . . . . .        P Near16 0000     No Seg   0000 *External STDCALL
+main . . . . . . . . . . . . . .        P Near   0000     _TEXT    0033 Private  STDCALL
+printstring  . . . . . . . . . .        P Near   0033     _TEXT    0010 Private  STDCALL
+
+
+Symbols:
+
+                N a m e                 Type       Value     Attr
+
+@CodeSize  . . . . . . . . . . .        Number             0h 
+@DataSize  . . . . . . . . . . .        Number             0h 
+@Interface . . . . . . . . . . .        Number             3h 
+@Model . . . . . . . . . . . . .        Number             2h 
+@cmdline . . . . . . . . . . . .        Text   OFFSET __98765765cmdline
+@code  . . . . . . . . . . . . .        Text   _TEXT
+@data  . . . . . . . . . . . . .        Text   DGROUP
+@stack . . . . . . . . . . . . .        Text   DGROUP
+ACTION_CREATED_OPENED  . . . . .        Number             2h 
+ACTION_OPENED  . . . . . . . . .        Number             1h 
+ACTION_REPLACED_OPENED . . . . .        Number             3h 
+FILE_CREATE  . . . . . . . . . .        Number            10h 
+FILE_OPEN  . . . . . . . . . . .        Number             1h 
+FILE_TRUNCATE  . . . . . . . . .        Number             2h 
+LIGHT_BLUE . . . . . . . . . . .        Number             9h 
+LIGHT_CYAN . . . . . . . . . . .        Number             Bh 
+LIGHT_GRAY . . . . . . . . . . .        Number             7h 
+LIGHT_GREEN  . . . . . . . . . .        Number             Ah 
+LIGHT_MAGENTA  . . . . . . . . .        Number             Dh 
+LIGHT_RED  . . . . . . . . . . .        Number             Ch 
+OPEN_ACCESS_READONLY . . . . . .        Number             0h 
+OPEN_ACCESS_READWRITE  . . . . .        Number             2h 
+OPEN_ACCESS_RO_NOMODLASTACCESS .        Number             4h 
+OPEN_ACCESS_WRITEONLY  . . . . .        Number             1h 
+OPEN_FLAGS_ALIAS_HINT  . . . . .        Number           400h 
+OPEN_FLAGS_COMMIT  . . . . . . .        Number          4000h 
+OPEN_FLAGS_NOCRITERR . . . . . .        Number          2000h 
+OPEN_FLAGS_NOINHERIT . . . . . .        Number            80h 
+OPEN_FLAGS_NO_BUFFERING  . . . .        Number           100h 
+OPEN_FLAGS_NO_COMPRESS . . . . .        Number           200h 
+OPEN_SHARE_COMPATIBLE  . . . . .        Number             0h 
+OPEN_SHARE_DENYNONE  . . . . . .        Number            40h 
+OPEN_SHARE_DENYREAD  . . . . . .        Number            30h 
+OPEN_SHARE_DENYREADWRITE . . . .        Number            10h 
+OPEN_SHARE_DENYWRITE . . . . . .        Number            20h 
+_A_ARCH  . . . . . . . . . . . .        Number            20h 
+_A_HIDDEN  . . . . . . . . . . .        Number             2h 
+_A_NORMAL  . . . . . . . . . . .        Number             0h 
+_A_RDONLY  . . . . . . . . . . .        Number             1h 
+_A_SYSTEM  . . . . . . . . . . .        Number             4h 
+_A_VOLID . . . . . . . . . . . .        Number             8h 
+black  . . . . . . . . . . . . .        Number             0h 
+blue . . . . . . . . . . . . . .        Number             1h 
+brown  . . . . . . . . . . . . .        Number             6h 
+cyan . . . . . . . . . . . . . .        Number             3h 
+exit . . . . . . . . . . . . . .        Text   .EXIT
+gray . . . . . . . . . . . . . .        Number             8h 
+green  . . . . . . . . . . . . .        Number             2h 
+lightBlue  . . . . . . . . . . .        Number             9h 
+lightCyan  . . . . . . . . . . .        Number             Bh 
+lightGray  . . . . . . . . . . .        Number             7h 
+lightGreen . . . . . . . . . . .        Number             Ah 
+lightMagenta . . . . . . . . . .        Number             Dh 
+lightRed . . . . . . . . . . . .        Number             Ch 
+magenta  . . . . . . . . . . . .        Number             5h 
+red  . . . . . . . . . . . . . .        Number             4h 
+return . . . . . . . . . . . . .        L Near            42h _TEXT STDCALL
+string1  . . . . . . . . . . . .        Byte               0h _DATA STDCALL
+string2  . . . . . . . . . . . .        Byte[34]           1h _DATA STDCALL
+string3  . . . . . . . . . . . .        Byte[14]          23h _DATA STDCALL
+string4  . . . . . . . . . . . .        Byte[14]          31h _DATA STDCALL
+string5  . . . . . . . . . . . .        Byte[14]          3Fh _DATA STDCALL
+string6  . . . . . . . . . . . .        Byte[14]          4Dh _DATA STDCALL
+white  . . . . . . . . . . . . .        Number             Fh 
+yellow . . . . . . . . . . . . .        Number             Eh 
+
+.\p5.asm: 73 lines, 2 passes, 16 ms, 0 warnings, 0 errors
